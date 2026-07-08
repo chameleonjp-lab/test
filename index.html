@@ -15,7 +15,6 @@
             --ui-bg: rgba(244, 241, 234, 0.95);
         }
 
-        /* スマホブラウザ特有のスクロールやバウンスを完全に防止 */
         html, body {
             margin: 0;
             padding: 0;
@@ -130,12 +129,11 @@
 
 <div id="game-container">
     <canvas id="gameCanvas"></canvas>
-    
     <div id="center-text"></div>
 
     <div id="home-screen" class="screen">
         <h1>お団子キャッチ</h1>
-        <p class="rules">10秒間で「お団子🍡(+1)」をキャッチ！<br>「ケーキ🍰(-3)」は避けてね！<br>（画面を左右にスワイプして操作）</p>
+        <p class="rules">約10秒間で「お団子🍡(+1)」をキャッチ！<br>「ケーキ🍰(-3)」は避けてね！<br>（画面を左右にスワイプして操作）</p>
         <button id="start-btn">いざ、開始</button>
     </div>
 
@@ -161,11 +159,8 @@
     let logicalWidth, logicalHeight;
     let dpr = window.devicePixelRatio || 1;
 
-    // iPhone SE等のブラウザバー対応：実際の画面高さを取得
     function resizeCanvas() {
-        // innerHeightをコンテナに強制適用
         container.style.height = window.innerHeight + 'px';
-        
         logicalWidth = container.clientWidth;
         logicalHeight = window.innerHeight;
         
@@ -173,21 +168,20 @@
         canvas.height = logicalHeight * dpr;
         ctx.scale(dpr, dpr);
         
-        // お皿の位置を画面下部から余裕を持たせた位置に設定（見切れ防止）
         catcher.baseY = logicalHeight - 100;
         catcher.y = catcher.baseY;
     }
     window.addEventListener('resize', resizeCanvas);
 
-    let gameState = 'home'; // home, playing, waiting_for_fall, finished, result
+    let gameState = 'home'; 
     let score = 0;
     let items = [];
     let effects = [];
     let spawnQueue = [];
     let gameTimer = 0;
+    let nextSpawnTime = 0;
     let lastTimestamp = 0;
     let animationId = null;
-    let spawnIntervalId = null;
     let countdownIntervalId = null;
     
     const GAME_DURATION = 10000;
@@ -216,7 +210,7 @@
 
     canvas.addEventListener('touchmove', (e) => {
         if (gameState !== 'playing' && gameState !== 'waiting_for_fall') return;
-        e.preventDefault(); // スクロール防止
+        e.preventDefault(); 
         
         const currentTouchX = e.touches[0].clientX;
         if (lastTouchX !== null) {
@@ -229,13 +223,12 @@
 
     canvas.addEventListener('touchend', () => { lastTouchX = null; });
 
-    // 50個の団子と10個のケーキの生成リストを作成
+    // 50個の団子と10個のケーキをキューに詰めてシャッフル
     function initSpawnQueue() {
         spawnQueue = [];
         for (let i = 0; i < 50; i++) spawnQueue.push('dango');
         for (let i = 0; i < 10; i++) spawnQueue.push('cake');
         
-        // ランダムにシャッフル
         for (let i = spawnQueue.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [spawnQueue[i], spawnQueue[j]] = [spawnQueue[j], spawnQueue[i]];
@@ -243,15 +236,14 @@
     }
 
     function spawnItem() {
-        if (spawnQueue.length === 0 || gameState !== 'playing') return;
-        
-        const type = spawnQueue.pop(); // キューから取り出す
+        if (spawnQueue.length === 0) return;
+        const type = spawnQueue.pop(); 
         
         items.push({
             type: type,
             x: Math.random() * (logicalWidth - 40) + 20,
             y: -40,
-            speedY: Math.random() * 2 + 5,
+            speedY: Math.random() * 2.5 + 5,
             size: 35,
             active: true
         });
@@ -261,20 +253,20 @@
         if (!lastTimestamp) lastTimestamp = timestamp;
         const dt = timestamp - lastTimestamp;
         lastTimestamp = timestamp;
-        const timeScale = dt / 16.66;
+        const timeScale = dt / 16.66; // スマホのFPS差異を吸収
 
         ctx.clearRect(0, 0, logicalWidth, logicalHeight);
 
-        if (gameState === 'playing') {
+        if (gameState === 'playing' || gameState === 'waiting_for_fall') {
             gameTimer += dt;
         }
 
-        // 上部のタイムゲージ
+        // 上部のタイムゲージ描画
         const timeRate = Math.min(gameTimer / GAME_DURATION, 1);
         ctx.fillStyle = gameTimer > GAME_DURATION - 3000 ? 'rgba(183, 40, 46, 0.6)' : 'rgba(92, 126, 68, 0.5)';
         ctx.fillRect(0, 0, logicalWidth * (1 - timeRate), 6);
 
-        // お皿のバウンド
+        // お皿のバウンドと描画
         if (catcher.yOffset > 0) catcher.yOffset -= 1 * timeScale;
         if (catcher.yOffset < 0) catcher.yOffset = 0;
         catcher.y = catcher.baseY + catcher.yOffset;
@@ -284,11 +276,13 @@
         ctx.roundRect(catcher.x, catcher.y, catcher.width, catcher.height, 10);
         ctx.fill();
 
+        // スコア表示
         ctx.fillStyle = '#333';
         ctx.font = 'bold 24px "Yu Mincho", serif';
         ctx.textAlign = 'left';
         ctx.fillText(`得点: ${score}`, 20, 35);
 
+        // アイテムの落下ロジックと当たり判定
         ctx.font = '35px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -314,47 +308,49 @@
                     
                     if (d.type === 'dango') {
                         score++;
-                        effects.push({ x: d.x, y: catcher.y - 20, life: 1.0, text: '+1', color: '#B7282E' }); // 赤
+                        effects.push({ x: d.x, y: catcher.y - 20, life: 1.0, text: '+1', color: '183, 40, 46' });
                     } else if (d.type === 'cake') {
                         score -= 3;
-                        effects.push({ x: d.x, y: catcher.y - 20, life: 1.0, text: '-3', color: '#1E3A8A' }); // 青
+                        effects.push({ x: d.x, y: catcher.y - 20, life: 1.0, text: '-3', color: '30, 58, 138' });
                     }
                 }
             }
+            // 画面下部に消えたら無効化
             if (d.y > logicalHeight + 50) d.active = false;
         }
 
-        // 点数エフェクトの描画
+        // 点数エフェクト処理
         ctx.font = 'bold 24px Arial';
         for (let i = effects.length - 1; i >= 0; i--) {
             let e = effects[i];
             e.y -= 2 * timeScale;
             e.life -= 0.04 * timeScale;
             
-            // 色をrgbaに変換して透明度を適用
-            const hex = e.color.replace('#', '');
-            const r = parseInt(hex.substring(0,2), 16);
-            const g = parseInt(hex.substring(2,4), 16);
-            const b = parseInt(hex.substring(4,6), 16);
-            
-            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.max(e.life, 0)})`;
+            ctx.fillStyle = `rgba(${e.color}, ${Math.max(e.life, 0)})`;
             ctx.fillText(e.text, e.x, e.y);
             
             if (e.life <= 0) effects.splice(i, 1);
         }
 
-        // ゲーム状態の遷移
-        if (gameState === 'playing' && gameTimer >= GAME_DURATION) {
-            // 10秒経過：生成を止めて、落ち切るのを待つフェーズへ
-            gameState = 'waiting_for_fall';
-            clearInterval(spawnIntervalId);
+        // --- 進行ロジックの修正部分 ---
+        if (gameState === 'playing') {
+            // 8.5秒間 (8500ms) の間に60個のアイテムを等間隔で確実に生成
+            while (gameTimer >= nextSpawnTime && spawnQueue.length > 0) {
+                spawnItem();
+                nextSpawnTime += (8500 / 60); // 約141ms間隔
+            }
+
+            // キューが空になったら生成ストップ（まだ終了の文字は出さない）
+            if (spawnQueue.length === 0) {
+                gameState = 'waiting_for_fall';
+            }
         } else if (gameState === 'waiting_for_fall' && activeItemsCount === 0) {
-            // 画面上からすべてのアイテムが消えたら、本当に終了
+            // 画面上からすべてのアイテム（団子・ケーキ）が完全に消えて初めて「終了！」
             gameState = 'finished';
             centerText.innerText = "終了！";
             centerText.style.opacity = 1;
             
-            // 1.5秒後にリザルト画面へ
+            // 1.5秒後にリザルトへ
             setTimeout(endGame, 1500);
         }
 
@@ -365,7 +361,6 @@
 
     function startGameSequence() {
         if (animationId) cancelAnimationFrame(animationId);
-        if (spawnIntervalId) clearInterval(spawnIntervalId);
         if (countdownIntervalId) clearInterval(countdownIntervalId);
 
         homeScreen.classList.add('hidden');
@@ -375,6 +370,7 @@
         items = [];
         effects = [];
         gameTimer = 0;
+        nextSpawnTime = 0;
         lastTimestamp = 0;
         
         resizeCanvas();
@@ -404,8 +400,8 @@
     function startPlay() {
         gameState = 'playing';
         lastTimestamp = performance.now();
-        // 60個のアイテムを約8.5秒で生成しきるペース (140ms間隔)
-        spawnIntervalId = setInterval(spawnItem, 140);
+        gameTimer = 0;
+        nextSpawnTime = 0;
         animationId = requestAnimationFrame(update);
     }
 
