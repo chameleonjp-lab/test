@@ -109,6 +109,92 @@
             box-shadow: 0 0 0 #0c85d0;
         }
 
+        .name-field {
+            width: min(82vw, 360px);
+            margin: 6px 0 8px;
+            padding: 13px 16px;
+            border: 2px solid #b8c59b;
+            border-radius: 14px;
+            background: #fffdf7;
+            color: var(--text-color);
+            font: inherit;
+            font-size: 1rem;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .screen-note {
+            min-height: 1.4em;
+            margin: 0 16px 4px;
+            color: #7a181d;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .screen-link {
+            display: inline-block;
+            margin: 5px 8px;
+            color: #7a181d;
+            font-size: 0.95rem;
+            font-weight: bold;
+        }
+
+        .result-content {
+            width: min(92vw, 460px);
+            max-height: 100%;
+            overflow-y: auto;
+            padding: 22px 0 30px;
+            text-align: center;
+        }
+
+        .share-text {
+            display: block;
+            width: min(88vw, 420px);
+            min-height: 72px;
+            margin: 8px auto 4px;
+            padding: 10px;
+            border: 1px solid #b8c59b;
+            border-radius: 10px;
+            background: #fffdf7;
+            color: var(--text-color);
+            font: 0.9rem/1.45 inherit;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+
+        .ranking {
+            width: min(88vw, 420px);
+            margin: 16px auto 8px;
+            padding: 12px 16px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.65);
+            text-align: left;
+        }
+
+        .ranking h3 {
+            margin: 0 0 8px;
+            color: var(--accent-color);
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .ranking ol {
+            margin: 0;
+            padding-left: 1.6rem;
+        }
+
+        .ranking li {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(122, 24, 29, 0.12);
+        }
+
+        .ranking-status {
+            margin: 8px 0 0;
+            color: #635d54;
+            font-size: 0.82rem;
+            text-align: center;
+        }
+
         #center-text {
             position: absolute;
             top: 40%;
@@ -134,16 +220,33 @@
     <div id="home-screen" class="screen">
         <h1>お団子キャッチ</h1>
         <p class="rules">約10秒間で「お団子🍡(+1)」をキャッチ！<br>「ケーキ🍰(-3)」は避けてね！<br>（画面を左右にスワイプして操作）</p>
+        <label for="player-name">ランキング表示名</label>
+        <input id="player-name" class="name-field" type="text" maxlength="20" autocomplete="nickname" placeholder="名前を入力してください">
+        <p id="name-note" class="screen-note" role="status" aria-live="polite"></p>
         <button id="start-btn">いざ、開始</button>
+        <button id="home-share-btn" class="share-btn" type="button">ゲームをシェア</button>
+        <p id="home-share-status" class="screen-note" role="status" aria-live="polite"></p>
+        <a class="screen-link" href="https://chameleonjp-lab.github.io/chameleonjp_lab/" target="_blank" rel="noopener noreferrer">カメレオンJPの実験場へ</a>
     </div>
 
     <div id="result-screen" class="screen hidden">
-        <h2 style="font-size: 2rem; margin-bottom: 10px;">結果発表</h2>
-        <p style="font-size: 1.5rem; margin-bottom: 30px;">
-            得点: <span style="font-size: 3.5rem; color: var(--accent-color); font-weight: bold;" id="final-score">0</span>
-        </p>
-        <button id="retry-btn">もう一度挑む</button>
-        <button id="share-btn" class="share-btn">Xで結果をシェア</button>
+        <div class="result-content">
+            <h2 style="font-size: 2rem; margin-bottom: 10px;">結果発表</h2>
+            <p style="font-size: 1.5rem; margin-bottom: 12px;">
+                得点: <span style="font-size: 3.5rem; color: var(--accent-color); font-weight: bold;" id="final-score">0</span>
+            </p>
+            <p id="result-player" class="ranking-status"></p>
+            <textarea id="share-text" class="share-text" readonly aria-label="結果のシェア文"></textarea>
+            <button id="retry-btn">もう一度挑む</button>
+            <button id="share-btn" class="share-btn">結果をシェア（文面をコピー）</button>
+            <p id="share-status" class="screen-note" role="status" aria-live="polite"></p>
+            <section class="ranking" aria-labelledby="ranking-title">
+                <h3 id="ranking-title">スコアランキング TOP10</h3>
+                <ol id="ranking-list"><li>ランキングを読み込み中…</li></ol>
+                <p id="ranking-status" class="ranking-status" role="status" aria-live="polite"></p>
+            </section>
+            <a class="screen-link" href="https://chameleonjp-lab.github.io/chameleonjp_lab/" target="_blank" rel="noopener noreferrer">カメレオンJPの実験場へ</a>
+        </div>
     </div>
 </div>
 
@@ -155,6 +258,124 @@
     const centerText = document.getElementById('center-text');
     const scoreDisplay = document.getElementById('final-score');
     const container = document.getElementById('game-container');
+    const nameInput = document.getElementById('player-name');
+    const nameNote = document.getElementById('name-note');
+    const resultPlayer = document.getElementById('result-player');
+    const shareTextField = document.getElementById('share-text');
+    const shareStatus = document.getElementById('share-status');
+    const rankingList = document.getElementById('ranking-list');
+    const rankingStatus = document.getElementById('ranking-status');
+    const homeShareStatus = document.getElementById('home-share-status');
+
+    const GAME_SLUG = 'test';
+    const LAB_URL = 'https://chameleonjp-lab.github.io/chameleonjp_lab/';
+    const SUPABASE_URL = 'https://mlpnjgezrnhdxsxolyzj.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_drzcy0v97knU6FgjqSgBHw_0A9XPdFM';
+    const CLIENT_VERSION = 'test-2026-08-31-platform';
+    const NAME_STORAGE_KEY = 'dango-catch.player-name';
+    let playerName = localStorage.getItem(NAME_STORAGE_KEY) || '';
+    nameInput.value = playerName;
+
+    function normalizeName(value) {
+        return value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 20);
+    }
+
+    function requireName() {
+        playerName = normalizeName(nameInput.value);
+        nameInput.value = playerName;
+        if (!playerName) {
+            nameNote.textContent = '名前を入力してから開始してください。';
+            nameInput.focus();
+            return false;
+        }
+        localStorage.setItem(NAME_STORAGE_KEY, playerName);
+        nameNote.textContent = '';
+        return true;
+    }
+
+    function gameUrl() {
+        return new URL(location.href).toString().split('#')[0];
+    }
+
+    function resultShareText() {
+        return `${playerName}さんのお団子キャッチ結果：${score}点！🍡\nケーキ🍰を避けながら10秒間で挑戦しました。\nあなたも挑戦してみてね！\n${gameUrl()}\n#お団子キャッチ #ミニゲーム`;
+    }
+
+    function homeShareText() {
+        return `10秒間のお団子キャッチに挑戦しよう！🍡\nお団子は+1点、ケーキは-3点。\n${gameUrl()}\n#お団子キャッチ #ミニゲーム`;
+    }
+
+    async function shareOrCopy(text, title) {
+        const statusElement = resultScreen.classList.contains('hidden') ? homeShareStatus : shareStatus;
+        statusElement.textContent = '';
+        if (navigator.share) {
+            try {
+                await navigator.share({ title, text, url: gameUrl() });
+                statusElement.textContent = '共有しました。';
+                return;
+            } catch (error) {
+                if (error && error.name === 'AbortError') return;
+            }
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            statusElement.textContent = 'シェア文をコピーしました。';
+        } catch (_) {
+            shareTextField.focus();
+            shareTextField.select();
+            statusElement.textContent = 'シェア文を選択しました。コピーしてご利用ください。';
+        }
+    }
+
+    async function callRankingRpc(functionName, payload) {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+            method: 'POST',
+            headers: {
+                apikey: SUPABASE_PUBLISHABLE_KEY,
+                Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+        const body = await response.text();
+        let data = null;
+        try { data = body ? JSON.parse(body) : null; } catch (_) { data = body; }
+        if (!response.ok) throw new Error(`${functionName}: ${response.status}`);
+        return data;
+    }
+
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+    }
+
+    function renderRanking(rows) {
+        const list = Array.isArray(rows) ? rows.slice(0, 10) : [];
+        rankingList.innerHTML = list.length
+            ? list.map((row) => `<li>${escapeHtml(row.display_name || row.player_name || 'ななし')}：${Number(row.score ?? row.best_score ?? 0)}点</li>`).join('')
+            : '<li>まだランキングがありません。</li>';
+    }
+
+    async function submitAndLoadRanking() {
+        rankingStatus.textContent = 'ランキングを更新中…';
+        try {
+            await callRankingRpc('submit_score', {
+                p_display_name: playerName,
+                p_game_slug: GAME_SLUG,
+                p_score: Math.trunc(score),
+                p_client_version: CLIENT_VERSION,
+            });
+        } catch (_) {
+            rankingStatus.textContent = '今回のスコアを送信できませんでした。ランキングを表示します。';
+        }
+        try {
+            const rows = await callRankingRpc('get_best_score_ranking', { p_game_slug: GAME_SLUG, p_limit: 10 });
+            renderRanking(rows);
+            if (!rankingStatus.textContent) rankingStatus.textContent = '上位10名を表示しています。';
+        } catch (_) {
+            renderRanking([]);
+            rankingStatus.textContent = 'ランキングを読み込めませんでした。';
+        }
+    }
 
     let logicalWidth, logicalHeight;
     let dpr = window.devicePixelRatio || 1;
@@ -360,6 +581,7 @@
     }
 
     function startGameSequence() {
+        if (!requireName()) return;
         if (animationId) cancelAnimationFrame(animationId);
         if (countdownIntervalId) clearInterval(countdownIntervalId);
 
@@ -409,16 +631,19 @@
         gameState = 'result';
         centerText.style.opacity = 0;
         scoreDisplay.innerText = score;
+        resultPlayer.textContent = `${playerName}さんの結果`;
+        shareTextField.value = resultShareText();
+        rankingList.innerHTML = '<li>ランキングを読み込み中…</li>';
+        rankingStatus.textContent = '';
         resultScreen.classList.remove('hidden');
+        void submitAndLoadRanking();
     }
 
     document.getElementById('start-btn').addEventListener('click', startGameSequence);
     document.getElementById('retry-btn').addEventListener('click', startGameSequence);
-    document.getElementById('share-btn').addEventListener('click', () => {
-        const text = encodeURIComponent(`お団子キャッチで【${score}点】を獲得したよ！🍡\n（ケーキ🍰を取ると減点されるよ！）\nあなたも挑戦してみてね！\n#お団子キャッチ #ミニゲーム`);
-        const url = encodeURIComponent('https://chameleonjp-lab.github.io/test/'); 
-        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
-    });
+    document.getElementById('home-share-btn').addEventListener('click', () => shareOrCopy(homeShareText(), 'お団子キャッチ'));
+    document.getElementById('share-btn').addEventListener('click', () => shareOrCopy(resultShareText(), 'お団子キャッチの結果'));
+    nameInput.addEventListener('input', () => { nameNote.textContent = ''; });
 
 </script>
 </body>
